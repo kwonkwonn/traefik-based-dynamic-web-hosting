@@ -28,15 +28,15 @@ import (
 //	  traefik.enable: "true"
 //	restart: unless-stopped
 type ContainerSpec struct {
-	Name        string            `yaml:"name"`
+	Name        *string           `yaml:"name"`
 	Image       string            `yaml:"image"`
 	Command     []string          `yaml:"command"`
 	Ports       []string          `yaml:"ports"`
 	Volumes     []string          `yaml:"volumes"`
 	Environment []string          `yaml:"environment"`
 	Labels      map[string]string `yaml:"labels"`
-	Restart     string            `yaml:"restart"`
-	NetworkMode string            `yaml:"network_mode"`
+	Restart     *string           `yaml:"restart"`
+	NetworkMode *string           `yaml:"network_mode"`
 }
 
 type ContainerHandler struct {
@@ -75,13 +75,18 @@ func (ch *ContainerHandler) CreateFromSpec(spec *ContainerSpec) (string, error) 
 		PortBindings:  parsePortBindings(spec.Ports),
 		RestartPolicy: parseRestartPolicy(spec.Restart),
 	}
-	if spec.NetworkMode != "" {
-		hostCfg.NetworkMode = container.NetworkMode(spec.NetworkMode)
+	if spec.NetworkMode != nil {
+		hostCfg.NetworkMode = container.NetworkMode(*spec.NetworkMode)
+	}
+
+	name := ""
+	if spec.Name != nil {
+		name = *spec.Name
 	}
 
 	ctx := context.Background()
 	result, err := ch.docker.GetClient().ContainerCreate(ctx, client.ContainerCreateOptions{
-		Name:       spec.Name,
+		Name:       name,
 		Config:     cfg,
 		HostConfig: hostCfg,
 		NetworkingConfig: &network.NetworkingConfig{},
@@ -139,8 +144,11 @@ func parsePortBindings(ports []string) network.PortMap {
 	return pm
 }
 
-func parseRestartPolicy(policy string) container.RestartPolicy {
-	switch policy {
+func parseRestartPolicy(policy *string) container.RestartPolicy {
+	if policy == nil {
+		return container.RestartPolicy{Name: container.RestartPolicyDisabled}
+	}
+	switch *policy {
 	case "always":
 		return container.RestartPolicy{Name: container.RestartPolicyAlways}
 	case "on-failure":
