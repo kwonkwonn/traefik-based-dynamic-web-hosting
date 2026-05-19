@@ -11,10 +11,19 @@ services:
     depends_on:
       - redis
 
+  api:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      - REDIS_ADDR=redis:6379
+      - BASE_DOMAIN=${BASE_DOMAIN:-localhost}
+    depends_on:
+      - redis
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
 
